@@ -16,12 +16,24 @@ public class EatZone : MonoBehaviour
         if (other.CompareTag("Edible"))
         {
             Debug.Log("Eat fruit.");
+            /*
             // Trigger exit
             other.transform.Translate(Vector3.up * 10000);
             //yield WaitForFixedUpdate();
             Destroy(other.gameObject);
             agent.SetDestination(agent.transform.position);
             senseCollider.Reset();
+            */
+
+            // Trigger exit
+            other.transform.Translate(Vector3.up * 10000);
+            //yield WaitForFixedUpdate();
+            Destroy(other.gameObject);
+
+            senseCollider.Reset();
+
+            agent.GetComponent<Animator>().SetBool("hasPath", false);
+            agent.GetComponent<Animator>().SetBool("hasRandomPath", false);
         }
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine.AI;
 public class SenseCollider : MonoBehaviour
 {
     [SerializeField]
-    int nbOfTargets = 0;
+    public int nbOfTargets = 0;
     public bool hasSeenTarget = false;
     public Vector3 lastSeenTargetPos = new Vector3(0, 0, 0);
     Blob blob;
@@ -20,20 +20,19 @@ public class SenseCollider : MonoBehaviour
     {
         if (other.CompareTag("Edible"))
         {
-            Debug.Log("Fruit seen.");
+            Debug.Log(blob.name+": Fruit found.");
             ++nbOfTargets;
-            //if(Vector3.Distance(other.transform.position, transform.position)<Vector3.Distance(lastSeenTargetPos, transform.position))
-            //{
             lastSeenTargetPos = other.transform.position;
-            //}
-            if (blob.hasRandomPath || !blob.GetComponent<NavMeshAgent>().hasPath || Vector3.Distance(blob.GetComponent<NavMeshAgent>().destination, blob.transform.position)>Vector3.Distance(lastSeenTargetPos, blob.transform.position))
+            if (blob.hasRandomPath || !blob.GetComponent<NavMeshAgent>().hasPath || Vector3.Distance(blob.GetComponent<NavMeshAgent>().destination, blob.transform.position) > Vector3.Distance(lastSeenTargetPos, blob.transform.position))
             {
-                Debug.Log("New path.");
+                Debug.Log(blob.name+": New target path.");
+                //blob.GetComponent<Animator>().SetBool("hasPath", true);
+                //blob.GetComponent<Animator>().SetBool("hasRandomPath", false);
                 blob.SetTargetDestination(lastSeenTargetPos);
             }
             else
             {
-                Debug.Log("Continue path.");
+                Debug.Log(blob.name + ": Continue path.");
             }
         }
         if (nbOfTargets > 0 && !hasSeenTarget)
@@ -53,11 +52,13 @@ public class SenseCollider : MonoBehaviour
             if (nbOfTargets > 0)
             {
                 --nbOfTargets;
-                if(other.transform.position == lastSeenTargetPos)
+                if (other.transform.position == lastSeenTargetPos)
                 {
+                    Debug.Log(blob.name + " has to stop soon.");
                     blob.hasToStop = true;
-                    Reset();
+                    //Reset();
                 }
+                
             }
         }
         if (nbOfTargets > 0 && !hasSeenTarget)
@@ -82,6 +83,18 @@ public class SenseCollider : MonoBehaviour
         transform.localScale = tmp;
         */
         anim.Play();
-
+        /*
+        if (nbOfTargets<=0)
+        {
+            Debug.Log(nbOfTargets);
+            blob.GetComponent<Animator>().SetBool("hasRandomPath", true);
+            blob.GetComponent<Animator>().SetBool("hasPath", false);
+        }
+        else
+        {
+            blob.GetComponent<Animator>().SetBool("hasPath", true);
+            blob.GetComponent<Animator>().SetBool("hasRandomPath", false);
+        }
+        */
     }
 }
