@@ -12,12 +12,14 @@ public class BlobComponent : MonoBehaviour
     private bool seeTarget;
     private GameObject fruitToEat;
     private GameObject target;
+    private int frames;
 
     // Start is called before the first frame update
     void Start()
     {
         _state = BlobState.None;
         seeTarget = false;
+        StartCoroutine("UpdateEnergy");
     }
 
     void UpdateState()
@@ -27,9 +29,20 @@ public class BlobComponent : MonoBehaviour
         if (energy == 0) _state = BlobState.Dead;
     }
 
+    IEnumerator UpdateEnergy()
+    {
+        for (; ; )
+        {
+            // execute block of code here
+            if (blob.velocity != new Vector3(0, 0, 0)) energy--;
+            yield return new WaitForSeconds(3);
+        }
+    }
+
     // Update is called once per frame
     void Update()
     {
+        UpdateEnergy();
         if (_state == BlobState.None)
         {
             seeTarget = false;
@@ -101,8 +114,8 @@ public class BlobComponent : MonoBehaviour
         GameObject[] blobs = GameObject.FindGameObjectsWithTag("Blob");
         if (!seeTarget)
         {
-            target = Closest(blobs, 15);
-            if (target != null) seeTarget = true;
+            target = Closest(blobs, 50);
+            if (target != null) seeTarget = true; 
             //si la premiere recherche ne marche pas, on se déplace
             if (!seeTarget)
             {
@@ -114,8 +127,9 @@ public class BlobComponent : MonoBehaviour
         //Si il a une cible il y va
         if (seeTarget && target != null)
         {
-            Debug.Log("Set destination");
+            //Debug.Log("Set destination");
             blob.SetDestination(target.transform.position);
+            
         }
 
         if(seeTarget && target != null && blob.hasPath && blob.remainingDistance < 1)
@@ -175,4 +189,5 @@ public class BlobComponent : MonoBehaviour
         Debug.Log("Ils font des bebes");
         energy -= 50;
     }
+
 }
