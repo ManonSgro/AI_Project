@@ -9,6 +9,11 @@ public class EatZone : MonoBehaviour
     NavMeshAgent agent;
     [SerializeField]
     Blob blob;
+    [SerializeField]
+    GameObject prefab;
+
+    // Genetic
+    public float mutationRate = 0.01f;
 
     private void Start()
     {
@@ -33,7 +38,7 @@ public class EatZone : MonoBehaviour
             */
 
             // Get energy
-            agent.gameObject.GetComponent<Blob>().energy += other.GetComponent<Fruit>().calories;
+            blob.energy += other.GetComponent<Fruit>().calories;
 
             // Trigger exit
             other.transform.Translate(Vector3.up * 10000);
@@ -49,9 +54,25 @@ public class EatZone : MonoBehaviour
         {
             Debug.Log("Making babies.");
 
+            // Get parents
+            Blob parent1 = blob;
+            Blob parent2 = other.gameObject.GetComponent<Blob>();
+
             // Lose energy
-            agent.gameObject.GetComponent<Blob>().energy -= 50;
-            other.gameObject.GetComponent<Blob>().energy -= 50;
+            parent1.energy -= 50;
+            parent2.energy -= 50;
+
+            // Add new blob
+            GameObject child = Instantiate(prefab, parent1.transform.position, Quaternion.identity);
+
+            // Calculate genes
+            child.GetComponent<Blob>().Crossover(parent1, parent2);
+            //child.GetComponent<Blob>() = Blob.Crossover(parent1, parent2);
+
+            child.GetComponent<Blob>().Mutate(mutationRate);
+
+            //newPopulation.Add(child);
+            //Instantiate(child, parent1.transform.position, Quaternion.identity);
 
             senseCollider.Reset();
         }

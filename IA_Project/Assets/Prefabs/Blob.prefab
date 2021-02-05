@@ -132,13 +132,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0d82ff7234df1b4ba9ef30e2e3457fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  senseCollider: {fileID: 0}
+  genes: 
+  gameManager: {fileID: 0}
+  senseCollider: {fileID: 3242455727086153266}
   hasToStop: 0
-  agent: {fileID: 0}
+  agent: {fileID: 3242455726921678269}
   hasPath: 0
   hasRandomPath: 0
   name: Carapatte
-  energy: 100
+  energy: 50
   _state: 0
   fertile: 0
 --- !u!95 &3242455726921678263
@@ -207,6 +209,8 @@ MonoBehaviour:
   senseCollider: {fileID: 3242455727086153266}
   agent: {fileID: 3242455726921678269}
   blob: {fileID: 3242455726921678262}
+  prefab: {fileID: 3242455726921678268}
+  mutationRate: 0.01
 --- !u!135 &3242455726983777357
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -215,7 +219,7 @@ SphereCollider:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3242455726983777358}
   m_Material: {fileID: 0}
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 1

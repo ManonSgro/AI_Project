@@ -7,7 +7,7 @@ public class GeneticAlgorithm
 
 	private List<Blob> Population;
 	private List<Blob> newPopulation;
-
+	/*
 	public GeneticAlgorithm(int populationSize)
 	{
 		Population = new List<Blob>(populationSize);
@@ -53,4 +53,5 @@ public class GeneticAlgorithm
 		return Population[i];
 
 	}
+	*/
 }

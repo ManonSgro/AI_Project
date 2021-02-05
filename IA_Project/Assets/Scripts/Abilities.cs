@@ -11,16 +11,17 @@ public class Abilities : MonoBehaviour
     private float bestFitness = 0;
     private char[] bestGenes = new char[24];
 
-    private GeneticAlgorithm ga;
+    //private GeneticAlgorithm ga;
 
     void Start()
     {
         Debug.Log("Start Genetic Algorithm");
-        ga = new GeneticAlgorithm(populationSize);
+        //ga = new GeneticAlgorithm(populationSize);
     }
 
     void Update()
     {
+        /*
         ga.NewGeneration();
 
         numGeneration++;
@@ -32,6 +33,7 @@ public class Abilities : MonoBehaviour
             Debug.Log("End");
             this.enabled = false;
         }
+        */
     }
 
     public char GetRandomGene()

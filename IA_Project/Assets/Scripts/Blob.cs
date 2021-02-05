@@ -6,9 +6,11 @@ public enum BlobState { None, Hungry, Fertile, Dead }
 public class Blob : MonoBehaviour
 {
     // Genetic
-    private char[] genes;
+    public char[] genes;
     private float fitness;
     private static int size = 24;
+    [SerializeField]
+    GameObject gameManager;
 
     // Sensors
     public SenseCollider senseCollider;
@@ -35,25 +37,27 @@ public class Blob : MonoBehaviour
     */
 
     #region Genetic
+    /*
     public Blob()
     {
         this.genes = new char[size];
         for (int i = 0; i < genes.Length; i++)
         {
-            genes[i] = GameObject.FindObjectOfType<Abilities>().GetRandomGene();
+            genes[i] = gameManager.GetComponent<Abilities>().GetRandomGene();
 
         }
         Debug.Log("Genome blob : " + new string(genes));
-        this.fitness = GameObject.FindObjectOfType<Abilities>().calculateFitness(genes);
-    }
-
+        this.fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
+    }*/
+    
     public Blob(char[] genes)
     {
         this.genes = new char[size];
         this.genes = genes;
         Debug.Log("Genome blob : " + new string(genes));
-        this.fitness = GameObject.FindObjectOfType<Abilities>().calculateFitness(genes);
+        this.fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
     }
+    /*
     public static Blob Crossover(Blob parent1, Blob parent2)
     {
         Debug.Log("Start Crossover");
@@ -73,6 +77,27 @@ public class Blob : MonoBehaviour
         Debug.Log("Finish Crossover");
         return new Blob(tempGenes);
     }
+    */
+
+    public void Crossover(Blob parent1, Blob parent2)
+    {
+        Debug.Log("Start Crossover");
+        char[] tempGenes = new char[size];
+
+        for (int i = 0; i < tempGenes.Length; i++)
+        {
+            if (UnityEngine.Random.Range(0, 1) < 0.5)
+            {
+                tempGenes[i] = parent1.genes[i];
+            }
+            else
+            {
+                tempGenes[i] = parent2.genes[i];
+            }
+        }
+        genes = tempGenes;
+        Debug.Log("Finish Crossover");
+    }
 
     public void Mutate(float mutationRate)
     {
@@ -89,6 +114,19 @@ public class Blob : MonoBehaviour
     #region Monobehaviour
     void Start()
     {
+        // Genetic
+        gameManager = GameObject.Find("GameManager");
+        Debug.Log(gameManager.GetComponent<Abilities>());
+
+        this.genes = new char[size];
+        for (int i = 0; i < genes.Length; i++)
+        {
+            genes[i] = gameManager.GetComponent<Abilities>().GetRandomGene();
+
+        }
+        Debug.Log("Genome blob : " + new string(genes));
+        this.fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
+
         // Logic & Sensors
         _state = BlobState.None;
         agent = this.GetComponent<NavMeshAgent>();
@@ -102,7 +140,7 @@ public class Blob : MonoBehaviour
     {
         if (energy < 70) _state = BlobState.Hungry;
         if (energy >= 70) _state = BlobState.Fertile;
-        if (energy == 0) _state = BlobState.Dead;
+        if (energy <= 0) _state = BlobState.Dead;
     }
 
     void LoseEnergy()
