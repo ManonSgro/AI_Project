@@ -3,17 +3,24 @@ using UnityEngine.AI;
 
 public class EatZone : MonoBehaviour
 {
+    [SerializeField]
     SenseCollider senseCollider;
+    [SerializeField]
     NavMeshAgent agent;
+    [SerializeField]
+    Blob blob;
 
     private void Start()
     {
+        /*
         senseCollider = GameObject.Find("SenseCollider").GetComponent<SenseCollider>();
         agent = GameObject.Find("Blob").GetComponent<NavMeshAgent>();
+        blob = GameObject.Find("Blob").GetComponent<Blob>();
+        */
     }
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Edible"))
+        if (blob._state == BlobState.Hungry && other.CompareTag("Edible"))
         {
             Debug.Log("Eat fruit.");
             /*
@@ -25,6 +32,9 @@ public class EatZone : MonoBehaviour
             senseCollider.Reset();
             */
 
+            // Get energy
+            agent.gameObject.GetComponent<Blob>().energy += other.GetComponent<Fruit>().calories;
+
             // Trigger exit
             other.transform.Translate(Vector3.up * 10000);
             //yield WaitForFixedUpdate();
@@ -32,8 +42,18 @@ public class EatZone : MonoBehaviour
 
             senseCollider.Reset();
 
-            agent.GetComponent<Animator>().SetBool("hasPath", false);
-            agent.GetComponent<Animator>().SetBool("hasRandomPath", false);
+            //agent.GetComponent<Animator>().SetBool("hasPath", false);
+            //agent.GetComponent<Animator>().SetBool("hasRandomPath", false);
+
+        }else if (blob._state == BlobState.Fertile && other.CompareTag("Blob") && other.GetComponent<Blob>().fertile)
+        {
+            Debug.Log("Making babies.");
+
+            // Lose energy
+            agent.gameObject.GetComponent<Blob>().energy -= 50;
+            other.gameObject.GetComponent<Blob>().energy -= 50;
+
+            senseCollider.Reset();
         }
     }
 }

@@ -9,6 +9,8 @@ public class SenseCollider : MonoBehaviour
     public Vector3 lastSeenTargetPos = new Vector3(0, 0, 0);
     Blob blob;
     Animation anim;
+    [SerializeField]
+    string tagToSearchFor = "None";
 
     private void Start()
     {
@@ -18,9 +20,9 @@ public class SenseCollider : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Edible"))
+        if (other.CompareTag(tagToSearchFor))
         {
-            Debug.Log(blob.name+": Fruit found.");
+            Debug.Log(blob.name+": Target found."+(blob.fertile?other.GetComponent<Blob>().name:""));
             ++nbOfTargets;
             lastSeenTargetPos = other.transform.position;
             if (blob.hasRandomPath || !blob.GetComponent<NavMeshAgent>().hasPath || Vector3.Distance(blob.GetComponent<NavMeshAgent>().destination, blob.transform.position) > Vector3.Distance(lastSeenTargetPos, blob.transform.position))
@@ -47,7 +49,7 @@ public class SenseCollider : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Edible"))
+        if (other.CompareTag(tagToSearchFor))
         {
             if (nbOfTargets > 0)
             {
@@ -96,5 +98,11 @@ public class SenseCollider : MonoBehaviour
             blob.GetComponent<Animator>().SetBool("hasRandomPath", false);
         }
         */
+    }
+
+    public void ChangeTagToSearchFor(string tag)
+    {
+        tagToSearchFor = tag;
+        Reset();
     }
 }

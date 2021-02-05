@@ -1,8 +1,16 @@
 ﻿using UnityEngine;
 using UnityEngine.AI;
 
+public enum BlobState { None, Hungry, Fertile, Dead }
+
 public class Blob : MonoBehaviour
 {
+    // Genetic
+    private char[] genes;
+    private float fitness;
+    private static int size = 24;
+
+    // Sensors
     public SenseCollider senseCollider;
     public bool hasToStop = false;
     public NavMeshAgent agent;
@@ -10,7 +18,12 @@ public class Blob : MonoBehaviour
     public bool hasPath = false;
     public bool hasRandomPath = false;
 
+    // Logic
     public string name;
+    public int energy = 20;
+    public BlobState _state;
+    BlobState tmpState;
+    public bool fertile = false;
 
     /*
     const float loopTime = 5f;
@@ -20,17 +33,109 @@ public class Blob : MonoBehaviour
     public bool hasRandomPath = false;
     public bool hasToStop = false;
     */
+
+    #region Genetic
+    public Blob()
+    {
+        this.genes = new char[size];
+        for (int i = 0; i < genes.Length; i++)
+        {
+            genes[i] = GameObject.FindObjectOfType<Abilities>().GetRandomGene();
+
+        }
+        Debug.Log("Genome blob : " + new string(genes));
+        this.fitness = GameObject.FindObjectOfType<Abilities>().calculateFitness(genes);
+    }
+
+    public Blob(char[] genes)
+    {
+        this.genes = new char[size];
+        this.genes = genes;
+        Debug.Log("Genome blob : " + new string(genes));
+        this.fitness = GameObject.FindObjectOfType<Abilities>().calculateFitness(genes);
+    }
+    public static Blob Crossover(Blob parent1, Blob parent2)
+    {
+        Debug.Log("Start Crossover");
+        char[] tempGenes = new char[size];
+
+        for (int i = 0; i < tempGenes.Length; i++)
+        {
+            if (UnityEngine.Random.Range(0, 1) < 0.5)
+            {
+                tempGenes[i] = parent1.genes[i];
+            }
+            else
+            {
+                tempGenes[i] = parent2.genes[i];
+            }
+        }
+        Debug.Log("Finish Crossover");
+        return new Blob(tempGenes);
+    }
+
+    public void Mutate(float mutationRate)
+    {
+        for (int i = 0; i < genes.Length; i++)
+        {
+            if (UnityEngine.Random.Range(0, 1) < mutationRate)
+            {
+                genes[i] = GameObject.FindObjectOfType<Abilities>().GetRandomGene();
+            }
+        }
+    }
+    #endregion
+
+    #region Monobehaviour
     void Start()
     {
+        // Logic & Sensors
+        _state = BlobState.None;
         agent = this.GetComponent<NavMeshAgent>();
         senseCollider = transform.Find("SenseCollider").GetComponent<SenseCollider>();
         worldTransform = GameObject.Find("Terrain").transform;
         //InvokeRepeating("BlobLoop", 0.0f, loopTime);
+        InvokeRepeating("LoseEnergy", 0.0f, 1f);
     }
 
-    private void Update()
+    void UpdateState()
     {
-        if (!agent.hasPath ||Vector3.Distance(agent.transform.position, agent.destination)<1f) // has reach destination
+        if (energy < 70) _state = BlobState.Hungry;
+        if (energy >= 70) _state = BlobState.Fertile;
+        if (energy == 0) _state = BlobState.Dead;
+    }
+
+    void LoseEnergy()
+    {
+        tmpState = _state;
+        --energy;
+        UpdateState();
+        if (tmpState != _state)
+        {
+            switch (_state)
+            {
+                case BlobState.Hungry:
+                    //SearchFood();
+                    fertile = false;
+                    senseCollider.ChangeTagToSearchFor("Edible");
+                    break;
+                case BlobState.Fertile:
+                    //SearchPartner();
+                    fertile = true;
+                    senseCollider.ChangeTagToSearchFor("Blob");
+                    break;
+                case BlobState.Dead:
+                    Die();
+                    break;
+                default:
+                    break;
+            }
+        }        
+    }
+
+    void UpdateDestination()
+    {
+        if (!agent.hasPath || Vector3.Distance(agent.transform.position, agent.destination) < 1f || agent.isStopped) // has reach destination
         {
             senseCollider.Reset();
             if (senseCollider.hasSeenTarget)
@@ -44,9 +149,19 @@ public class Blob : MonoBehaviour
         }
         else if (hasToStop && Vector3.Distance(transform.position, agent.destination) <= senseCollider.transform.localScale.x / 2)
         {
-            Debug.Log(name +" : I have to stop.");
+            Debug.Log(name + " : I have to stop.");
             agent.SetDestination(transform.position);
         }
+    }
+    private void Update()
+    {
+        UpdateDestination();
+        /*
+        if(energy <= 0)
+        {
+            Die();
+        }
+        */
     }
     /*
     void BlobLoop()
@@ -142,4 +257,10 @@ public class Blob : MonoBehaviour
             Destroy(other.gameObject);
         }
     }*/
+
+    void Die()
+    {
+        Destroy(gameObject);
+    }
+    #endregion
 }
