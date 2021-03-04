@@ -39,7 +39,7 @@ public class Abilities : MonoBehaviour
     public char GetRandomGene()
     {
         int i = (int)UnityEngine.Random.Range(0, 2);
-        Debug.Log("Valeur tirée par random.Next : " + i);
+        //Debug.Log("Valeur tirée par random.Next : " + i);
         return validCharacters[i];
     }
 

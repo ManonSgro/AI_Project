@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.AI;
+using System.Linq;
+using System;
 
 public enum BlobState { None, Hungry, Fertile, Dead }
 
@@ -11,6 +13,9 @@ public class Blob : MonoBehaviour
     private static int size = 24;
     [SerializeField]
     GameObject gameManager;
+    float gene_speed = 3.5f;
+    float gene_size = 1;
+    float gene_energyNeeds = 70f;
 
     // Sensors
     public SenseCollider senseCollider;
@@ -48,7 +53,7 @@ public class Blob : MonoBehaviour
         }
         Debug.Log("Genome blob : " + new string(genes));
         this.fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
-    }*/
+    }
     
     public Blob(char[] genes)
     {
@@ -56,7 +61,8 @@ public class Blob : MonoBehaviour
         this.genes = genes;
         Debug.Log("Genome blob : " + new string(genes));
         this.fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
-    }
+    }*/
+
     /*
     public static Blob Crossover(Blob parent1, Blob parent2)
     {
@@ -130,16 +136,19 @@ public class Blob : MonoBehaviour
         // Logic & Sensors
         _state = BlobState.None;
         agent = this.GetComponent<NavMeshAgent>();
-        senseCollider = transform.Find("SenseCollider").GetComponent<SenseCollider>();
+        //senseCollider = transform.Find("SenseCollider").GetComponent<SenseCollider>();
         worldTransform = GameObject.Find("Terrain").transform;
         //InvokeRepeating("BlobLoop", 0.0f, loopTime);
+
+        //UpdateState();
+
         InvokeRepeating("LoseEnergy", 0.0f, 1f);
     }
 
     void UpdateState()
     {
-        if (energy < 70) _state = BlobState.Hungry;
-        if (energy >= 70) _state = BlobState.Fertile;
+        if (energy < gene_energyNeeds) _state = BlobState.Hungry;
+        if (energy >= gene_energyNeeds) _state = BlobState.Fertile;
         if (energy <= 0) _state = BlobState.Dead;
     }
 
@@ -166,6 +175,7 @@ public class Blob : MonoBehaviour
                     Die();
                     break;
                 default:
+                    senseCollider.ChangeTagToSearchFor("None");
                     break;
             }
         }        
@@ -182,6 +192,7 @@ public class Blob : MonoBehaviour
             }
             else
             {
+                Debug.Log("Path is random...");
                 SetRandomDestination();
             }
         }
@@ -244,28 +255,28 @@ public class Blob : MonoBehaviour
     */
     public void SetRandomDestination()
     {
-        float randomX = Random.Range(-worldTransform.localScale.x / 2, worldTransform.localScale.x / 2);
-        float randomZ = Random.Range(-worldTransform.localScale.z / 2, worldTransform.localScale.z / 2);
+        float randomX = UnityEngine.Random.Range(-worldTransform.localScale.x / 2, worldTransform.localScale.x / 2);
+        float randomZ = UnityEngine.Random.Range(-worldTransform.localScale.z / 2, worldTransform.localScale.z / 2);
         agent.SetDestination(new Vector3(randomX, transform.position.y, randomZ));
         hasRandomPath = true;
 
-        Debug.Log(name + ": Random path.");
+        //Debug.Log(name + ": Random path.");
     }
     public void SetTargetDestination(Vector3 dest)
     {
-        Debug.DrawLine(transform.position, senseCollider.lastSeenTargetPos, Color.red, 1.0f);
+        Debug.DrawLine(new Vector3(transform.position.x, 1f, transform.position.z), senseCollider.lastSeenTargetPos, Color.red, 20.0f);
         float maxRange = 5;
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, (senseCollider.lastSeenTargetPos - transform.position), out hit, maxRange))
+        if (Physics.Raycast(new Vector3(transform.position.x, 1f, transform.position.z), (senseCollider.lastSeenTargetPos - transform.position), out hit, maxRange))
         {
             if (hit.transform.position == senseCollider.lastSeenTargetPos)
             {
-                Debug.Log(name + ": Fruit reachable.");
+                //Debug.Log(name + ": Fruit reachable.");
                 hasRandomPath = false;
                 //agent.SetDestination(new Vector3(dest.x, 0, dest.z));
                 agent.SetDestination(dest);
                 Debug.DrawLine(transform.position, dest, Color.red, 1.0f);
-                Debug.Log(name + ": Target path.");
+                //Debug.Log(name + ": Target path.");
             }
             else
             {
@@ -300,5 +311,27 @@ public class Blob : MonoBehaviour
     {
         Destroy(gameObject);
     }
+
+    public void ChangeAppearance()
+    {
+        // change material
+        float red = Convert.ToInt32(string.Join("", genes.Take(8)), 2)/255f;
+        float green = Convert.ToInt32(string.Join("", genes.Skip(8).Take(8)), 2) / 255f;
+        float blue = Convert.ToInt32(string.Join("", genes.Skip(16).Take(8)), 2) / 255f;
+
+        GetComponent<Renderer>().material.color = new Color(red, green, blue);
+
+        // change speed
+        gene_speed = red * 10f;
+        agent.speed = gene_speed;
+
+        // change size
+        gene_size = green * 10f;
+        senseCollider.GetComponent<SphereCollider>().radius = gene_size;
+
+        // change energy needs
+        gene_energyNeeds = blue * 100f;
+    }
+
     #endregion
 }

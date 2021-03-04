@@ -22,19 +22,21 @@ public class SenseCollider : MonoBehaviour
     {
         if (other.CompareTag(tagToSearchFor))
         {
-            Debug.Log(blob.name+": Target found."+(blob.fertile?other.GetComponent<Blob>().name:""));
+            //Debug.Log(blob.name+": Target found."+(blob.fertile?other.GetComponent<Blob>().name:""));
             ++nbOfTargets;
             lastSeenTargetPos = other.transform.position;
+            Debug.Log("Has seen something on the way...");
             if (blob.hasRandomPath || !blob.GetComponent<NavMeshAgent>().hasPath || Vector3.Distance(blob.GetComponent<NavMeshAgent>().destination, blob.transform.position) > Vector3.Distance(lastSeenTargetPos, blob.transform.position))
             {
-                Debug.Log(blob.name+": New target path.");
+                //Debug.Log(blob.name+": New target path.");
                 //blob.GetComponent<Animator>().SetBool("hasPath", true);
                 //blob.GetComponent<Animator>().SetBool("hasRandomPath", false);
+                Debug.Log("Has seen something on the way !");
                 blob.SetTargetDestination(lastSeenTargetPos);
             }
             else
             {
-                Debug.Log(blob.name + ": Continue path.");
+                //Debug.Log(blob.name + ": Continue path.");
             }
         }
         if (nbOfTargets > 0 && !hasSeenTarget)
@@ -98,7 +100,14 @@ public class SenseCollider : MonoBehaviour
             blob.GetComponent<Animator>().SetBool("hasRandomPath", false);
         }
         */
-    }
+
+        
+        if (nbOfTargets <= 0)
+        {
+            blob.SetRandomDestination();
+        }
+        
+;    }
 
     public void ChangeTagToSearchFor(string tag)
     {
