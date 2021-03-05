@@ -4,12 +4,12 @@ using UnityEngine;
 
 public class BlobWalkToTarget : StateMachineBehaviour
 {
-    Blob blob;
+    //Blob blob;
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
         // Get blob
-        blob = animator.GetComponent<Blob>();
+        //blob = animator.GetComponent<Blob>();
         //blob.agent.destination = blob.senseCollider.lastSeenTargetPos;
         //blob.SetTargetDestination(blob.senseCollider.lastSeenTargetPos);
     }
@@ -17,12 +17,14 @@ public class BlobWalkToTarget : StateMachineBehaviour
     // OnStateUpdate is called on each Update frame between OnStateEnter and OnStateExit callbacks
     override public void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
+        /*
         if(blob.hasToStop && Vector3.Distance(animator.transform.position, blob.agent.destination) <= blob.senseCollider.transform.localScale.x / 2)
         {
             Debug.Log("I have to stop.");
             animator.SetBool("hasPath", false);
             animator.SetBool("hasRandomPath", false);
         }
+        */
     }
 
     // OnStateExit is called when a transition ends and the state machine finishes evaluating this state

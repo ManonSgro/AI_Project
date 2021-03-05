@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class BlobRandomWalk : StateMachineBehaviour
 {
+    /*
     Blob blob;
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
@@ -42,4 +43,5 @@ public class BlobRandomWalk : StateMachineBehaviour
     //{
     //    // Implement code that sets up animation IK (inverse kinematics)
     //}
+    */
 }

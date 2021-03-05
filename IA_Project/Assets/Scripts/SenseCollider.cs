@@ -4,6 +4,36 @@ using UnityEngine.AI;
 public class SenseCollider : MonoBehaviour
 {
     [SerializeField]
+    string tagToSearchFor = "None";
+    [SerializeField]
+    Blob blob;
+    [SerializeField]
+    Animation anim;
+
+    private void Start()
+    {
+        //InvokeRepeating("Anim", 0f, 2f);
+    }
+    private void Anim()
+    {
+        anim.Play("senseCollider");
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag(tagToSearchFor) && Vector3.Distance(other.transform.position, blob.agent.transform.position) < Vector3.Distance(blob.agent.transform.position, blob.agent.destination))
+        {
+            blob.SetTargetDestination(other.transform.position);
+        }
+    }
+
+    public void ChangeTagToSearchFor(string tag)
+    {
+        tagToSearchFor = tag;
+        anim.Play("senseCollider");
+    }
+
+    /*
+    [SerializeField]
     public int nbOfTargets = 0;
     public bool hasSeenTarget = false;
     public Vector3 lastSeenTargetPos = new Vector3(0, 0, 0);
@@ -20,23 +50,19 @@ public class SenseCollider : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        Debug.Log("Trigger enter : "+other.tag);
         if (other.CompareTag(tagToSearchFor))
         {
             //Debug.Log(blob.name+": Target found."+(blob.fertile?other.GetComponent<Blob>().name:""));
             ++nbOfTargets;
             lastSeenTargetPos = other.transform.position;
-            Debug.Log("Has seen something on the way...");
             if (blob.hasRandomPath || !blob.GetComponent<NavMeshAgent>().hasPath || Vector3.Distance(blob.GetComponent<NavMeshAgent>().destination, blob.transform.position) > Vector3.Distance(lastSeenTargetPos, blob.transform.position))
             {
-                //Debug.Log(blob.name+": New target path.");
-                //blob.GetComponent<Animator>().SetBool("hasPath", true);
-                //blob.GetComponent<Animator>().SetBool("hasRandomPath", false);
-                Debug.Log("Has seen something on the way !");
                 blob.SetTargetDestination(lastSeenTargetPos);
             }
             else
             {
-                //Debug.Log(blob.name + ": Continue path.");
+                Debug.Log(blob.name + ": Continue path.");
             }
         }
         if (nbOfTargets > 0 && !hasSeenTarget)
@@ -51,17 +77,12 @@ public class SenseCollider : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
+        Debug.Log("Trigger exit : "+other.tag);
         if (other.CompareTag(tagToSearchFor))
         {
             if (nbOfTargets > 0)
             {
                 --nbOfTargets;
-                if (other.transform.position == lastSeenTargetPos)
-                {
-                    Debug.Log(blob.name + " has to stop soon.");
-                    blob.hasToStop = true;
-                    //Reset();
-                }
                 
             }
         }
@@ -77,41 +98,20 @@ public class SenseCollider : MonoBehaviour
 
     public void Reset()
     {
+        Debug.Log("Reset");
         hasSeenTarget = false;
         nbOfTargets = 0;
 
         // reset lastSeenPos
-        /*
-        Vector3 tmp = transform.localScale;
-        transform.localScale = new Vector3(0, 0, 0);
-        transform.localScale = tmp;
-        */
         anim.Play();
-        /*
-        if (nbOfTargets<=0)
-        {
-            Debug.Log(nbOfTargets);
-            blob.GetComponent<Animator>().SetBool("hasRandomPath", true);
-            blob.GetComponent<Animator>().SetBool("hasPath", false);
-        }
-        else
-        {
-            blob.GetComponent<Animator>().SetBool("hasPath", true);
-            blob.GetComponent<Animator>().SetBool("hasRandomPath", false);
-        }
-        */
-
-        
-        if (nbOfTargets <= 0)
-        {
-            blob.SetRandomDestination();
-        }
         
 ;    }
 
     public void ChangeTagToSearchFor(string tag)
     {
+        Debug.Log("ChangeTagToSearchFor");
         tagToSearchFor = tag;
         Reset();
     }
+*/
 }

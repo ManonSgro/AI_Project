@@ -4,6 +4,39 @@ using UnityEngine.AI;
 public class ContactZone : MonoBehaviour
 {
     [SerializeField]
+    Blob blob;
+    [SerializeField]
+    GameObject babyBlob;
+
+    GameObject gameManager;
+
+    private void Start()
+    {
+        gameManager = GameObject.Find("GameManager");
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (blob.state == BlobState.Hungry && other.CompareTag("Edible"))
+        {
+            if (blob.child)
+            {
+                blob.transform.localScale = blob.transform.localScale + new Vector3(0.1f, 0.1f, 0.1f);
+                if (blob.transform.localScale.x >= 1)
+                {
+                    blob.child = false;
+                }
+            }
+            blob.energy += other.GetComponent<Fruit>().calories;
+            Destroy(other.gameObject);
+        }
+        if (blob.state == BlobState.Fertile && other.CompareTag("Blob") && other.GetComponent<Blob>().state == BlobState.Fertile)
+        {
+            gameManager.GetComponent<Abilities>().AddParents(blob, other.GetComponent<Blob>());
+        }
+    }
+    /*
+    [SerializeField]
     SenseCollider senseCollider;
     [SerializeField]
     NavMeshAgent agent;
@@ -15,27 +48,11 @@ public class ContactZone : MonoBehaviour
     // Genetic
     public float mutationRate = 0.01f;
 
-    private void Start()
-    {
-        /*
-        senseCollider = GameObject.Find("SenseCollider").GetComponent<SenseCollider>();
-        agent = GameObject.Find("Blob").GetComponent<NavMeshAgent>();
-        blob = GameObject.Find("Blob").GetComponent<Blob>();
-        */
-    }
     private void OnTriggerEnter(Collider other)
     {
         if (blob._state == BlobState.Hungry && other.CompareTag("Edible"))
         {
-            //Debug.Log("Eat fruit.");
-            /*
-            // Trigger exit
-            other.transform.Translate(Vector3.up * 10000);
-            //yield WaitForFixedUpdate();
-            Destroy(other.gameObject);
-            agent.SetDestination(agent.transform.position);
-            senseCollider.Reset();
-            */
+            Debug.Log("Eat fruit.");
 
             // Get energy
             blob.energy += other.GetComponent<Fruit>().calories;
@@ -78,4 +95,5 @@ public class ContactZone : MonoBehaviour
             senseCollider.Reset();
         }
     }
+    */
 }

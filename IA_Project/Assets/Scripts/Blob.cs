@@ -7,6 +7,267 @@ public enum BlobState { None, Hungry, Fertile, Dead }
 
 public class Blob : MonoBehaviour
 {
+    [SerializeField]
+    public float energy = 3;
+    [SerializeField]
+    public NavMeshAgent agent;
+    Transform worldTransform;
+    [SerializeField]
+    SenseCollider senseCollider;
+    [SerializeField]
+    GameObject gfx;
+
+    public BlobState state = BlobState.None;
+    public bool child = true;
+
+    // Genetic
+    [SerializeField]
+    public bool firstGen = false;
+    GameObject gameManager;
+
+    public char[] genes;
+    private static int size = 24;
+
+    [SerializeField]
+    Vector3 dest;
+    Vector3 savedPos;
+    public float fitness;
+    public float gene_speed = 3.5f;
+    public float gene_size = 1;
+    [SerializeField]
+    public float gene_energyNeeds = 70f;
+
+    [SerializeField]
+    GameObject smoke;
+
+    public void Crossover(Blob parent1, Blob parent2)
+    {
+        char[] tempGenes = new char[size];
+
+        for (int i = 0; i < tempGenes.Length; i++)
+        {
+            if (UnityEngine.Random.Range(0f, 1f) < 0.5f)
+            {
+                tempGenes[i] = parent1.genes[i];
+            }
+            else
+            {
+                tempGenes[i] = parent2.genes[i];
+            }
+        }
+        genes = tempGenes;
+    }
+
+    public void Mutate(float mutationRate)
+    {
+        for (int i = 0; i < genes.Length; i++)
+        {
+            if (UnityEngine.Random.Range(0f, 1f) < mutationRate)
+            {
+                genes[i] = gameManager.GetComponent<Abilities>().GetRandomGene();
+            }
+        }
+    }
+
+    bool RandomPoint(Vector3 center, float range, out Vector3 result)
+    {
+        for (int i = 0; i < 30; i++)
+        {
+            Vector3 randomPoint = center + UnityEngine.Random.insideUnitSphere * range;
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(randomPoint, out hit, 1.0f, NavMesh.AllAreas))
+            {
+                result = hit.position;
+                return true;
+            }
+        }
+        result = Vector3.zero;
+        return false;
+    }
+
+    private void Awake()
+    {
+        gameManager = GameObject.Find("GameManager");
+
+        gameManager.GetComponent<Abilities>().population.Add(this);
+
+        worldTransform = GameObject.Find("Terrain").transform;
+        if (firstGen)
+        {
+            genes = new char[size];
+            for (int i = 0; i < genes.Length; i++)
+            {
+                genes[i] = gameManager.GetComponent<Abilities>().GetRandomGene();
+
+            }
+            ChangeAppearance();
+        }
+
+        InvokeRepeating("LoseEnergy", 0f, 1f);
+
+        savedPos = agent.transform.position;
+        InvokeRepeating("IsWaitingForTooLong", 0f, 3f);
+    }
+
+    void IsWaitingForTooLong()
+    {
+        Vector3 newPos = agent.transform.position;
+        if(Vector3.Distance(newPos, savedPos) <= 0.5f)
+        {
+            // is blocked
+            SetRandomDestination();
+        }
+        else
+        {
+            savedPos = newPos;
+        }
+    }
+
+    private void Update()
+    {
+        if (!agent.hasPath || Vector3.Distance(agent.transform.position, agent.destination) < 1f)
+        {
+            SetRandomDestination();
+        }
+    }
+
+    void LoseEnergy()
+    {
+        energy -= 1*gene_speed/10;
+        UpdateState();
+        switch (state)
+        {
+            case BlobState.Hungry:
+                senseCollider.ChangeTagToSearchFor("Edible");
+                break;
+            case BlobState.Fertile:
+                senseCollider.ChangeTagToSearchFor("Blob");
+                break;
+            case BlobState.Dead:
+                Die();
+                break;
+            default:
+                break;
+        }
+    }
+
+    void Die()
+    {
+        GameObject smokePuff = Instantiate(smoke, transform.position, transform.rotation) as GameObject;
+        ParticleSystem parts = smokePuff.GetComponent<ParticleSystem>();
+        float totalDuration = parts.duration;
+        Destroy(smokePuff, totalDuration);
+
+        gameManager.GetComponent<Abilities>().population.Remove(this);
+        Destroy(gameObject);
+    }
+
+    public void SetRandomDestination()
+    {
+        float randomX = UnityEngine.Random.Range(-worldTransform.localScale.x / 2, worldTransform.localScale.x / 2);
+        float randomZ = UnityEngine.Random.Range(-worldTransform.localScale.z / 2, worldTransform.localScale.z / 2);
+        Vector3 point;
+        if (RandomPoint(new Vector3(randomX, transform.position.y, randomZ), 30f, out point))
+        {
+            try
+            {
+                agent.SetDestination(point);
+                dest = agent.destination;//debug
+            }
+            catch (Exception e)
+            {
+                Debug.Log("Error : "+e.Message);
+            }
+        }
+    }
+
+    public void SetTargetDestination(Vector3 target)
+    {
+        /*
+        Debug.DrawRay(new Vector3(agent.transform.position.x, 0f, agent.transform.position.z), (target - agent.transform.position), Color.red, 10.0f);
+
+        RaycastHit hit;
+        if (Physics.Raycast(new Vector3(agent.transform.position.x, 0f, agent.transform.position.z), (target - agent.transform.position), out hit))
+        {
+            if (Vector3.Distance(hit.transform.position, target) <= .5f)
+            {
+                agent.SetDestination(target);
+            }
+            else
+            {
+                Debug.Log(name + ": There is an obstacle...");
+            }
+        }
+        */
+        agent.SetDestination(target);
+        dest = agent.destination;
+    }
+
+    void UpdateState()
+    {        
+        if (energy < 50f) state = BlobState.Hungry;
+        if (energy >= 50f && !child) state = BlobState.Fertile;
+        if (energy <= 0) state = BlobState.Dead;
+    }
+
+    public void ChangeAppearance()
+    {
+        // change material
+        float red = Convert.ToInt32(string.Join("", genes.Take(8)), 2) / 255f;
+        float green = Convert.ToInt32(string.Join("", genes.Skip(8).Take(8)), 2) / 255f;
+        float blue = Convert.ToInt32(string.Join("", genes.Skip(16).Take(8)), 2) / 255f;
+
+        gfx.GetComponent<Renderer>().material.color = new Color(red, green, blue);
+
+        // change speed
+        gene_speed = red * 10f;
+        agent.speed = gene_speed>0?gene_speed:1f;
+        gameManager.GetComponent<Abilities>().allSpeed.Add(gene_speed);
+
+        // change size
+        gene_size = green * 50f;
+        senseCollider.GetComponent<SphereCollider>().radius = gene_size;
+        gameManager.GetComponent<Abilities>().allSize.Add(gene_size);
+
+        // change energy needs
+        gene_energyNeeds = 100f - (blue * 100f);
+        gameManager.GetComponent<Abilities>().allEnergy.Add(gene_energyNeeds);
+        float size = 0.1f + gene_energyNeeds / 100f * .5f;
+        transform.localScale = new Vector3(size, size, size);
+
+        // calculate fitness
+        fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
+
+        /*
+        // create custom animation for sensors
+        Animation anim = senseCollider.GetComponent<Animation>(); // required
+        AnimationCurve curve;
+
+        // create a new AnimationClip
+        AnimationClip clip = new AnimationClip();
+        clip.legacy = true;
+        clip.name = gene_size.ToString();
+
+        // create a curve to move the GameObject and assign to the clip
+        Keyframe[] keys;
+        keys = new Keyframe[2];
+        keys[0] = new Keyframe(0.0f, 0.0f);
+        keys[1] = new Keyframe(1.0f, 1);
+        curve = new AnimationCurve(keys);
+        clip.SetCurve("", typeof(Transform), "localScale.x", curve);
+        clip.SetCurve("", typeof(Transform), "localScale.y", curve);
+        clip.SetCurve("", typeof(Transform), "localScale.z", curve);
+
+        // now animate the GameObject
+        anim.AddClip(clip, clip.name);
+        senseCollider.clipName = clip.name;
+        */
+    }
+}
+
+/*
+public class Blob : MonoBehaviour
+{
     // Genetic
     public char[] genes;
     private float fitness;
@@ -21,6 +282,7 @@ public class Blob : MonoBehaviour
     public SenseCollider senseCollider;
     public bool hasToStop = false;
     public NavMeshAgent agent;
+    [SerializeField]
     Transform worldTransform;
     public bool hasPath = false;
     public bool hasRandomPath = false;
@@ -32,58 +294,7 @@ public class Blob : MonoBehaviour
     BlobState tmpState;
     public bool fertile = false;
 
-    /*
-    const float loopTime = 5f;
-    NavMeshAgent agent;
-    Transform worldTransform;
-    SenseCollider senseCollider;
-    public bool hasRandomPath = false;
-    public bool hasToStop = false;
-    */
-
     #region Genetic
-    /*
-    public Blob()
-    {
-        this.genes = new char[size];
-        for (int i = 0; i < genes.Length; i++)
-        {
-            genes[i] = gameManager.GetComponent<Abilities>().GetRandomGene();
-
-        }
-        Debug.Log("Genome blob : " + new string(genes));
-        this.fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
-    }
-    
-    public Blob(char[] genes)
-    {
-        this.genes = new char[size];
-        this.genes = genes;
-        Debug.Log("Genome blob : " + new string(genes));
-        this.fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
-    }*/
-
-    /*
-    public static Blob Crossover(Blob parent1, Blob parent2)
-    {
-        Debug.Log("Start Crossover");
-        char[] tempGenes = new char[size];
-
-        for (int i = 0; i < tempGenes.Length; i++)
-        {
-            if (UnityEngine.Random.Range(0, 1) < 0.5)
-            {
-                tempGenes[i] = parent1.genes[i];
-            }
-            else
-            {
-                tempGenes[i] = parent2.genes[i];
-            }
-        }
-        Debug.Log("Finish Crossover");
-        return new Blob(tempGenes);
-    }
-    */
 
     public void Crossover(Blob parent1, Blob parent2)
     {
@@ -121,9 +332,6 @@ public class Blob : MonoBehaviour
     void Start()
     {
         // Genetic
-        gameManager = GameObject.Find("GameManager");
-        Debug.Log(gameManager.GetComponent<Abilities>());
-
         this.genes = new char[size];
         for (int i = 0; i < genes.Length; i++)
         {
@@ -135,12 +343,6 @@ public class Blob : MonoBehaviour
 
         // Logic & Sensors
         _state = BlobState.None;
-        agent = this.GetComponent<NavMeshAgent>();
-        //senseCollider = transform.Find("SenseCollider").GetComponent<SenseCollider>();
-        worldTransform = GameObject.Find("Terrain").transform;
-        //InvokeRepeating("BlobLoop", 0.0f, loopTime);
-
-        //UpdateState();
 
         InvokeRepeating("LoseEnergy", 0.0f, 1f);
     }
@@ -183,8 +385,9 @@ public class Blob : MonoBehaviour
 
     void UpdateDestination()
     {
-        if (!agent.hasPath || Vector3.Distance(agent.transform.position, agent.destination) < 1f || agent.isStopped) // has reach destination
+        if (!agent.hasPath || Vector3.Distance(agent.transform.position, agent.destination) < .1f || agent.isStopped) // has reach destination
         {
+            Debug.Log("Is stopped.");
             senseCollider.Reset();
             if (senseCollider.hasSeenTarget)
             {
@@ -192,7 +395,6 @@ public class Blob : MonoBehaviour
             }
             else
             {
-                Debug.Log("Path is random...");
                 SetRandomDestination();
             }
         }
@@ -205,56 +407,10 @@ public class Blob : MonoBehaviour
     private void Update()
     {
         UpdateDestination();
-        /*
-        if(energy <= 0)
-        {
-            Die();
-        }
-        */
     }
-    /*
-    void BlobLoop()
-    {
-        if (!agent.hasPath)
-        {
-            Debug.Log("Search a path.");
-            if (senseCollider.hasSeenTarget)
-            {
-                Debug.Log("Fruit found.");
-                float maxRange = 5;
-                RaycastHit hit;
-                if (Physics.Raycast(transform.position, (senseCollider.lastSeenTargetPos - transform.position), out hit, maxRange))
-                {
-                    if (hit.transform.position == senseCollider.lastSeenTargetPos)
-                    {
-                        Debug.Log("Fruit reachable !");
-                        SetTargetDestination(senseCollider.lastSeenTargetPos);
-                    }
-                    else
-                    {
-                        Debug.Log("There is an obstacle...");
-                        Debug.DrawLine(transform.position, senseCollider.lastSeenTargetPos, Color.red, 1.0f);
-                        SetRandomDestination();
-                    }
-                }
-            }
-            else
-            {
-                Debug.Log("No fruit found.");
-                SetRandomDestination();
-            }
-            hasToStop = false;
-
-        }
-        else if(hasToStop && Vector3.Distance(transform.position, agent.destination) <= senseCollider.transform.localScale.x / 2)
-        {
-            Debug.Log("I have to stop.");
-            agent.SetDestination(transform.position);
-        }
-    }
-    */
     public void SetRandomDestination()
     {
+        Debug.Log("Set random dest");
         float randomX = UnityEngine.Random.Range(-worldTransform.localScale.x / 2, worldTransform.localScale.x / 2);
         float randomZ = UnityEngine.Random.Range(-worldTransform.localScale.z / 2, worldTransform.localScale.z / 2);
         agent.SetDestination(new Vector3(randomX, transform.position.y, randomZ));
@@ -264,10 +420,11 @@ public class Blob : MonoBehaviour
     }
     public void SetTargetDestination(Vector3 dest)
     {
-        Debug.DrawLine(new Vector3(transform.position.x, 1f, transform.position.z), senseCollider.lastSeenTargetPos, Color.red, 20.0f);
+        Debug.Log("Set target dest");
+        //Debug.DrawLine(new Vector3(transform.position.x, 1f, transform.position.z), senseCollider.lastSeenTargetPos, Color.red, 20.0f);
         float maxRange = 5;
         RaycastHit hit;
-        if (Physics.Raycast(new Vector3(transform.position.x, 1f, transform.position.z), (senseCollider.lastSeenTargetPos - transform.position), out hit, maxRange))
+        if (Physics.Raycast(agent.transform.position, (senseCollider.lastSeenTargetPos - transform.position), out hit, maxRange))
         {
             if (hit.transform.position == senseCollider.lastSeenTargetPos)
             {
@@ -275,45 +432,25 @@ public class Blob : MonoBehaviour
                 hasRandomPath = false;
                 //agent.SetDestination(new Vector3(dest.x, 0, dest.z));
                 agent.SetDestination(dest);
-                Debug.DrawLine(transform.position, dest, Color.red, 1.0f);
+                Debug.DrawLine(agent.transform.position, dest, Color.red, 1.0f);
                 //Debug.Log(name + ": Target path.");
             }
             else
             {
                 Debug.Log(name + ": There is an obstacle...");
-                /*
-                if (!agent.hasPath)
-                {
-                    Debug.Log(name + ": New random path.");
-                    SetRandomDestination();
-                }
-                */
             }
         }
-        /*
-        GameObject[] fruits = GameObject.FindGameObjectsWithTag("Edible");
-        foreach(GameObject fruit in fruits)
-        {
-            Destroy(fruit);
-        }
-        */
     }
-    /*
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Edible"))
-        {
-            Destroy(other.gameObject);
-        }
-    }*/
 
     void Die()
     {
+        Debug.Log("Die");
         Destroy(gameObject);
     }
 
     public void ChangeAppearance()
     {
+        Debug.Log("Change appearance");
         // change material
         float red = Convert.ToInt32(string.Join("", genes.Take(8)), 2)/255f;
         float green = Convert.ToInt32(string.Join("", genes.Skip(8).Take(8)), 2) / 255f;
@@ -335,3 +472,4 @@ public class Blob : MonoBehaviour
 
     #endregion
 }
+*/
