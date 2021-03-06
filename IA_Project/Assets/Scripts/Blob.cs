@@ -133,7 +133,7 @@ public class Blob : MonoBehaviour
 
     void LoseEnergy()
     {
-        energy -= 1*gene_speed/10;
+        energy -= 1*((gene_speed/10f+gene_size/50f)/2f);
         UpdateState();
         switch (state)
         {
@@ -222,16 +222,13 @@ public class Blob : MonoBehaviour
         // change speed
         gene_speed = red * 10f;
         agent.speed = gene_speed>0?gene_speed:1f;
-        gameManager.GetComponent<Abilities>().allSpeed.Add(gene_speed);
 
         // change size
         gene_size = green * 50f;
         senseCollider.GetComponent<SphereCollider>().radius = gene_size;
-        gameManager.GetComponent<Abilities>().allSize.Add(gene_size);
 
         // change energy needs
         gene_energyNeeds = 100f - (blue * 100f);
-        gameManager.GetComponent<Abilities>().allEnergy.Add(gene_energyNeeds);
         float size = 0.1f + gene_energyNeeds / 100f * .5f;
         transform.localScale = new Vector3(size, size, size);
 

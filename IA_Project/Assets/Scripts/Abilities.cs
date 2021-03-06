@@ -20,10 +20,6 @@ public class Abilities : MonoBehaviour
     private int numGeneration = 0;
     private float bestFitness = 0;
     private char[] bestGenes = new char[24];
-    List<float> allFitness = new List<float>();
-    public List<float> allSpeed = new List<float>();
-    public List<float> allSize = new List<float>();
-    public List<float> allEnergy = new List<float>();
 
     public List<Blob> parents = new List<Blob>();
 
@@ -57,6 +53,8 @@ public class Abilities : MonoBehaviour
     CinemachineVirtualCamera vCam;
     [SerializeField]
     GameObject smoke;
+
+    bool gameInactive = true;
 
     public void ChangeNbOfFruitsToSpawn()
     {
@@ -103,7 +101,6 @@ public class Abilities : MonoBehaviour
         {
             point = blob1.transform.position;
         }
-        Debug.Log("Make a baby");
         GameObject tmpBlob = Instantiate(newBlob, point, Quaternion.identity);
 
         GameObject smokePuff = Instantiate(smoke, point, transform.rotation) as GameObject;
@@ -143,6 +140,10 @@ public class Abilities : MonoBehaviour
 
     public void StartGame()
     {
+        population = new List<Blob>();
+
+        gameInactive = false;
+
         newBlob.GetComponent<Blob>().firstGen = true;
         for (int i = 0; i < initialPopulation; ++i)
         {
@@ -166,6 +167,38 @@ public class Abilities : MonoBehaviour
 
         //Time.timeScale = 50;
     }
+    public void PauseGame()
+    {
+        Time.timeScale = 0f;
+
+        CancelInvoke("SpawnFruit");
+        CancelInvoke("UpdateCharts");
+    }
+    public void RestartGame()
+    {
+        Time.timeScale = 1f;
+
+        InvokeRepeating("SpawnFruit", 0f, 1f);
+        InvokeRepeating("UpdateCharts", 0f, 5f);
+    }
+
+    public void StopGame()
+    {
+        Time.timeScale = 1f;
+
+        var children = new List<GameObject>();
+        foreach (Transform child in blobRoot.transform) children.Add(child.gameObject);
+        children.ForEach(child => Destroy(child));
+
+        var fruitsChildren = new List<GameObject>();
+        foreach (Transform child in fruitRoot.transform) children.Add(child.gameObject);
+        children.ForEach(child => Destroy(child));
+
+        CancelInvoke("SpawnFruit");
+        CancelInvoke("UpdateCharts");
+        gameInactive = true;
+        UpdateCharts();
+    }
 
     public void UpdateCharts()
     {
@@ -178,7 +211,7 @@ public class Abilities : MonoBehaviour
 
         foreach (Chart chart in charts)
         {
-            chart.UpdatePoints();
+            chart.UpdatePoints(!gameInactive);
 
         }
         
@@ -202,8 +235,7 @@ public class Abilities : MonoBehaviour
 
     public char GetRandomGene()
     {
-        int i = (int)UnityEngine.Random.Range(0, 2);
-        //Debug.Log("Valeur tirée par random.Next : " + i);
+        int i = Random.Range(0, 2);
         return validCharacters[i];
     }
 
@@ -230,13 +262,6 @@ public class Abilities : MonoBehaviour
             bestGenes = genes;
         }
 
-        allFitness.Add(fitness);
-
         return fitness;
-    }
-
-    private void UpdateText(char[] bestGenes, float bestFitness, int numGeneration, int populationSize)
-    {
-        Debug.Log("Generation number : " + numGeneration + " Best Genes : " + new string(bestGenes) + " Best Fitness : " + bestFitness + ", Population Size : " + populationSize);
     }
 }

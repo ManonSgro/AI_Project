@@ -11,8 +11,10 @@ public class Chart : MonoBehaviour
     GameObject point;
     [SerializeField]
     GameObject text;
+    [SerializeField]
+    int maxPoints = 30;
 
-    public void UpdatePoints()
+    public void UpdatePoints(bool allPoints)
     {
         // Remove current points
         var children = new List<GameObject>();
@@ -34,16 +36,24 @@ public class Chart : MonoBehaviour
                 }
                 */
             }
+
+            int start = 0;
             float gradientX = GetComponent<RectTransform>().rect.width / points.Count;
+            if (allPoints && points.Count > maxPoints)
+            {
+                start = points.Count - maxPoints;
+                gradientX = GetComponent<RectTransform>().rect.width / maxPoints;
+            }
+
             if (gradientX > 20)
             {
                 gradientX = 20;
             }
 
-            for (int i = 0; i < points.Count; ++i)
+            for (int i = start; i < points.Count; ++i)
             {
                 var posY = points[i] * gradientY;
-                var posX = (i + 1) * gradientX;
+                var posX = (i - start + 1) * gradientX;
                 var tmpBar = Instantiate(point, transform.position, Quaternion.identity, transform);
                 var posYfinal = posY - GetComponent<RectTransform>().rect.height / 2 - tmpBar.GetComponent<RectTransform>().rect.height;
                 //Debug.Log(gradientY);
