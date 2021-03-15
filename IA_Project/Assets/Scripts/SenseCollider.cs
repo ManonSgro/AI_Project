@@ -8,11 +8,14 @@ public class SenseCollider : MonoBehaviour
     [SerializeField]
     Blob blob;
     [SerializeField]
-    Animation anim;
+    public Animation anim;
+
+    public bool canAnim = false;
 
     private void Start()
     {
         //InvokeRepeating("Anim", 0f, 2f);
+        canAnim = GameObject.FindGameObjectWithTag("GameManager").GetComponent<Abilities>().sensorsError;
     }
     private void Anim()
     {
@@ -29,7 +32,10 @@ public class SenseCollider : MonoBehaviour
     public void ChangeTagToSearchFor(string tag)
     {
         tagToSearchFor = tag;
-        anim.Play("senseCollider");
+        if (canAnim)
+        {
+            Anim();
+        }
     }
 
     /*

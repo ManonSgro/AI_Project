@@ -2,11 +2,16 @@
 using UnityEngine.AI;
 using System.Linq;
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using Cinemachine;
 
 public enum BlobState { None, Hungry, Fertile, Dead }
 
 public class Blob : MonoBehaviour
 {
+    public string firstname = "Etienne";
+
     [SerializeField]
     public float energy = 3;
     [SerializeField]
@@ -26,19 +31,34 @@ public class Blob : MonoBehaviour
     GameObject gameManager;
 
     public char[] genes;
-    private static int size = 24;
+    private static int size = 40;
 
-    [SerializeField]
-    Vector3 dest;
     Vector3 savedPos;
     public float fitness;
     public float gene_speed = 3.5f;
     public float gene_size = 1;
     [SerializeField]
     public float gene_energyNeeds = 70f;
+    public float gene_groupSize = 0f;
+    public List<Blob> group;
+    public float gene_share = 0f;
+    float energyLoss = 0f;
 
     [SerializeField]
     GameObject smoke;
+    [SerializeField]
+    GameObject hearts;
+
+    // for groups
+    Vector3 oldPoint = Vector3.zero;
+    bool hasRandomPath = false;
+
+    public IEnumerator MakingBaby()
+    {
+        agent.speed = 0f;
+        yield return new WaitForSeconds(5f);
+        agent.speed = gene_speed > 0 ? gene_speed : 1f;
+    }
 
     public void Crossover(Blob parent1, Blob parent2)
     {
@@ -71,11 +91,12 @@ public class Blob : MonoBehaviour
 
     bool RandomPoint(Vector3 center, float range, out Vector3 result)
     {
-        for (int i = 0; i < 30; i++)
+        for (int i = 0; i < 10; i++)
         {
             Vector3 randomPoint = center + UnityEngine.Random.insideUnitSphere * range;
             NavMeshHit hit;
-            if (NavMesh.SamplePosition(randomPoint, out hit, 1.0f, NavMesh.AllAreas))
+            var areaMaskFromName = 1 << NavMesh.GetAreaFromName("Walkable");
+            if (NavMesh.SamplePosition(randomPoint, out hit, 1.0f, areaMaskFromName))
             {
                 result = hit.position;
                 return true;
@@ -87,6 +108,10 @@ public class Blob : MonoBehaviour
 
     private void Awake()
     {
+        transform.parent = GameObject.FindGameObjectWithTag("BlobRoot").transform; // avoid bug
+
+        PlayParticles(transform.position);
+
         gameManager = GameObject.Find("GameManager");
 
         gameManager.GetComponent<Abilities>().population.Add(this);
@@ -107,6 +132,9 @@ public class Blob : MonoBehaviour
 
         savedPos = agent.transform.position;
         InvokeRepeating("IsWaitingForTooLong", 0f, 3f);
+
+        List<string> possibleNames = new List<string>() { "Eva", "Johan", "Sophie", "Ruben", "Clélie", "Louisa", "Elisa", "Clara", "Enguerrand", "Laura", "Mathilde", "Zoé", "Jules", "Mélissande", "Thomas", "Andréa", "Barbara", "Guillaume", "Julien", "Victor", "Yoann", "Amandine", "Pierre", "Laurine", "Cyrielle", "Lucie", "Antoine", "Nicolas", "Monica", "Flora", "Brice", "Amélia", "Solène", "Victorine", "Baptiste", "Line", "Océane", "Maéva", "Bastien", "Laurelenn", "Margaux", "Manon", "Pierre", "Margaux", "Roxane", "Gaëlle", "Sarah" };
+        firstname = possibleNames[UnityEngine.Random.Range(0, possibleNames.Count - 1)];
     }
 
     void IsWaitingForTooLong()
@@ -129,50 +157,163 @@ public class Blob : MonoBehaviour
         {
             SetRandomDestination();
         }
+        if (hasRandomPath && group.Count > 0)
+        {
+            Vector3 newPoint = SetGroupDestination();
+            if(Vector3.Distance(newPoint, oldPoint) > 5f)
+            {
+                oldPoint = newPoint;
+                Vector3 point;
+                if (RandomPoint(newPoint, 30f, out point))
+                {
+                    try
+                    {
+                        agent.SetDestination(point);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.Log("Error : " + e.Message);
+                    }
+                }
+            }
+        }
     }
 
     void LoseEnergy()
     {
-        energy -= 1*((gene_speed/10f+gene_size/50f)/2f);
-        UpdateState();
-        switch (state)
+        energy -= energyLoss;
+
+        if (UpdateState())
         {
-            case BlobState.Hungry:
-                senseCollider.ChangeTagToSearchFor("Edible");
-                break;
-            case BlobState.Fertile:
-                senseCollider.ChangeTagToSearchFor("Blob");
-                break;
-            case BlobState.Dead:
-                Die();
-                break;
-            default:
-                break;
+            switch (state)
+            {
+                case BlobState.Hungry:
+                    senseCollider.ChangeTagToSearchFor("Edible");
+                    break;
+                case BlobState.Fertile:
+                    senseCollider.ChangeTagToSearchFor("Blob");
+                    break;
+                case BlobState.Dead:
+                    Die();
+                    break;
+                default:
+                    break;
+            }
+        } 
+        if(state == BlobState.Fertile && senseCollider.canAnim)
+        {
+            senseCollider.anim.Play("senseCollider");
         }
+    }
+
+    void PlayParticles(Vector3 point)
+    {
+        GameObject smokePuff = Instantiate(smoke, point, smoke.transform.rotation) as GameObject;
+        ParticleSystem parts = smokePuff.GetComponent<ParticleSystem>();
+        float totalDuration = parts.main.duration + parts.main.startLifetime.constantMax;
+        Destroy(smokePuff, totalDuration);
     }
 
     void Die()
     {
-        GameObject smokePuff = Instantiate(smoke, transform.position, transform.rotation) as GameObject;
-        ParticleSystem parts = smokePuff.GetComponent<ParticleSystem>();
-        float totalDuration = parts.duration;
-        Destroy(smokePuff, totalDuration);
+        PlayParticles(transform.position);
 
         gameManager.GetComponent<Abilities>().population.Remove(this);
         Destroy(gameObject);
     }
 
+    private void OnMouseDown()
+    {
+        gameManager.GetComponent<Abilities>().blobPanel.UpdateInfos(this);
+        gameManager.GetComponent<Abilities>().blobPanel.gameObject.SetActive(true);
+        gameManager.GetComponent<Abilities>().vCam.m_Follow = transform;
+    }
+
+    Vector3 SetGroupDestination()
+    {
+        Vector3 randomPoint = Vector3.zero;
+
+        // check for null
+        group.RemoveAll(item => item == null);
+
+        if (group.Count > 0)
+        {
+            Vector3 average = Vector3.zero;
+            int n = 0;
+            for(int i=0; i<group.Count; ++i)
+            {
+                if (group[i] != null && Vector3.Distance(group[i].transform.position, transform.position) < 10f)
+                {
+                    average += group[i].transform.position;
+                    ++n;
+                }
+            }
+            randomPoint = average/n;
+        }
+        return randomPoint;
+    }
+
     public void SetRandomDestination()
     {
+        hasRandomPath = true;
+        /*
         float randomX = UnityEngine.Random.Range(-worldTransform.localScale.x / 2, worldTransform.localScale.x / 2);
         float randomZ = UnityEngine.Random.Range(-worldTransform.localScale.z / 2, worldTransform.localScale.z / 2);
+        Vector3 randomPoint = new Vector3(randomX, transform.position.y, randomZ);
+        /*
+        // check for null
+        group.RemoveAll(item => item == null);
+
+        if (group.Count > 0)
+        {
+            /*
+            Vector3 average = Vector3.zero;
+            int n = 0;
+            for(int i=0; i<group.Count; ++i)
+            {
+                if (group[i] != null)
+                {
+                    average += group[i].agent.destination;
+                    ++n;
+                }
+            }
+            randomPoint = average/n;
+            */
+        /*
+            float minDist = Vector3.Distance(group[0].transform.position, transform.position);
+            int idNeighbor = 0;
+            for (int i = 0; i < group.Count; ++i)
+            {
+                float newDist = Vector3.Distance(group[i].transform.position, transform.position);
+                if (minDist > newDist)
+                {
+                    minDist = newDist;
+                    idNeighbor = i;
+
+                }
+            }
+            randomPoint = group[idNeighbor].agent.destination;
+        }
+        */
+        Vector3 randomPoint;
+        if (group.Count > 0)
+        {
+            randomPoint = SetGroupDestination();
+            oldPoint = randomPoint;
+        }
+        else
+        {
+            float randomX = UnityEngine.Random.Range(-worldTransform.localScale.x / 2, worldTransform.localScale.x / 2);
+            float randomZ = UnityEngine.Random.Range(-worldTransform.localScale.z / 2, worldTransform.localScale.z / 2);
+            randomPoint = new Vector3(randomX, transform.position.y, randomZ);
+        }
+
         Vector3 point;
-        if (RandomPoint(new Vector3(randomX, transform.position.y, randomZ), 30f, out point))
+        if (RandomPoint(randomPoint, 30f, out point))
         {
             try
             {
                 agent.SetDestination(point);
-                dest = agent.destination;//debug
             }
             catch (Exception e)
             {
@@ -183,6 +324,7 @@ public class Blob : MonoBehaviour
 
     public void SetTargetDestination(Vector3 target)
     {
+        hasRandomPath = false;
         /*
         Debug.DrawRay(new Vector3(agent.transform.position.x, 0f, agent.transform.position.z), (target - agent.transform.position), Color.red, 10.0f);
 
@@ -200,14 +342,29 @@ public class Blob : MonoBehaviour
         }
         */
         agent.SetDestination(target);
-        dest = agent.destination;
     }
 
-    void UpdateState()
-    {        
-        if (energy < 50f) state = BlobState.Hungry;
-        if (energy >= 50f && !child) state = BlobState.Fertile;
-        if (energy <= 0) state = BlobState.Dead;
+    bool UpdateState()
+    {
+        if (energy < 50f && state != BlobState.Hungry)
+        {
+            state = BlobState.Hungry;
+            hearts.SetActive(false);
+            return true;
+        }
+        if (energy >= 50f && !child && state != BlobState.Fertile)
+        {
+            state = BlobState.Fertile;
+            hearts.SetActive(true);
+            return true;
+        }
+        if (energy <= 0)
+        {
+            state = BlobState.Dead;
+            hearts.SetActive(false);
+            return true;
+        }
+        return false;
     }
 
     public void ChangeAppearance()
@@ -216,6 +373,8 @@ public class Blob : MonoBehaviour
         float red = Convert.ToInt32(string.Join("", genes.Take(8)), 2) / 255f;
         float green = Convert.ToInt32(string.Join("", genes.Skip(8).Take(8)), 2) / 255f;
         float blue = Convert.ToInt32(string.Join("", genes.Skip(16).Take(8)), 2) / 255f;
+        float groupSize = gameManager.GetComponent<Abilities>().canFormGroups ? Convert.ToInt32(string.Join("", genes.Skip(24).Take(8)), 2) / 255f : 0f;
+        float share = gameManager.GetComponent<Abilities>().canShareEnergy ? Convert.ToInt32(string.Join("", genes.Skip(32).Take(8)), 2) / 255f : 0f;
 
         gfx.GetComponent<Renderer>().material.color = new Color(red, green, blue);
 
@@ -227,10 +386,48 @@ public class Blob : MonoBehaviour
         gene_size = green * 50f;
         senseCollider.GetComponent<SphereCollider>().radius = gene_size;
 
+        
+        float nom = 0f;
+        float denom = 0f;
+        if (gameManager.GetComponent<Abilities>().speedAffectsEnergy)
+        {
+            nom += gene_speed / 10f;
+            denom += 1f;
+        }
+        if (gameManager.GetComponent<Abilities>().sensorsAffectsEnergy)
+        {
+            nom += gene_size / 50f;
+            denom += 1f;
+        }
+        if (denom > 0f)
+        {
+            energyLoss = 1 * (nom / denom);
+
+        }
+        else
+        {
+            energyLoss = 1f;
+        }
+
         // change energy needs
         gene_energyNeeds = 100f - (blue * 100f);
-        float size = 0.1f + gene_energyNeeds / 100f * .5f;
-        transform.localScale = new Vector3(size, size, size);
+        if (gameManager.GetComponent<Abilities>().energyAffectsBabies)
+        {
+            float size = 0.2f + gene_energyNeeds / 100f * .5f;
+            transform.localScale = new Vector3(size, size, size);
+        }
+        else
+        {
+            child = false;
+        }
+
+        // change groupSize
+        int maxGroupSize = 10;
+        gene_groupSize = Mathf.Round(groupSize * maxGroupSize);
+        group = new List<Blob>(Mathf.RoundToInt(gene_groupSize));
+
+        // change sharing
+        gene_share = share;
 
         // calculate fitness
         fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
@@ -261,212 +458,3 @@ public class Blob : MonoBehaviour
         */
     }
 }
-
-/*
-public class Blob : MonoBehaviour
-{
-    // Genetic
-    public char[] genes;
-    private float fitness;
-    private static int size = 24;
-    [SerializeField]
-    GameObject gameManager;
-    float gene_speed = 3.5f;
-    float gene_size = 1;
-    float gene_energyNeeds = 70f;
-
-    // Sensors
-    public SenseCollider senseCollider;
-    public bool hasToStop = false;
-    public NavMeshAgent agent;
-    [SerializeField]
-    Transform worldTransform;
-    public bool hasPath = false;
-    public bool hasRandomPath = false;
-
-    // Logic
-    public string name;
-    public int energy = 20;
-    public BlobState _state;
-    BlobState tmpState;
-    public bool fertile = false;
-
-    #region Genetic
-
-    public void Crossover(Blob parent1, Blob parent2)
-    {
-        Debug.Log("Start Crossover");
-        char[] tempGenes = new char[size];
-
-        for (int i = 0; i < tempGenes.Length; i++)
-        {
-            if (UnityEngine.Random.Range(0, 1) < 0.5)
-            {
-                tempGenes[i] = parent1.genes[i];
-            }
-            else
-            {
-                tempGenes[i] = parent2.genes[i];
-            }
-        }
-        genes = tempGenes;
-        Debug.Log("Finish Crossover");
-    }
-
-    public void Mutate(float mutationRate)
-    {
-        for (int i = 0; i < genes.Length; i++)
-        {
-            if (UnityEngine.Random.Range(0, 1) < mutationRate)
-            {
-                genes[i] = GameObject.FindObjectOfType<Abilities>().GetRandomGene();
-            }
-        }
-    }
-    #endregion
-
-    #region Monobehaviour
-    void Start()
-    {
-        // Genetic
-        this.genes = new char[size];
-        for (int i = 0; i < genes.Length; i++)
-        {
-            genes[i] = gameManager.GetComponent<Abilities>().GetRandomGene();
-
-        }
-        Debug.Log("Genome blob : " + new string(genes));
-        this.fitness = gameManager.GetComponent<Abilities>().calculateFitness(genes);
-
-        // Logic & Sensors
-        _state = BlobState.None;
-
-        InvokeRepeating("LoseEnergy", 0.0f, 1f);
-    }
-
-    void UpdateState()
-    {
-        if (energy < gene_energyNeeds) _state = BlobState.Hungry;
-        if (energy >= gene_energyNeeds) _state = BlobState.Fertile;
-        if (energy <= 0) _state = BlobState.Dead;
-    }
-
-    void LoseEnergy()
-    {
-        tmpState = _state;
-        --energy;
-        UpdateState();
-        if (tmpState != _state)
-        {
-            switch (_state)
-            {
-                case BlobState.Hungry:
-                    //SearchFood();
-                    fertile = false;
-                    senseCollider.ChangeTagToSearchFor("Edible");
-                    break;
-                case BlobState.Fertile:
-                    //SearchPartner();
-                    fertile = true;
-                    senseCollider.ChangeTagToSearchFor("Blob");
-                    break;
-                case BlobState.Dead:
-                    Die();
-                    break;
-                default:
-                    senseCollider.ChangeTagToSearchFor("None");
-                    break;
-            }
-        }        
-    }
-
-    void UpdateDestination()
-    {
-        if (!agent.hasPath || Vector3.Distance(agent.transform.position, agent.destination) < .1f || agent.isStopped) // has reach destination
-        {
-            Debug.Log("Is stopped.");
-            senseCollider.Reset();
-            if (senseCollider.hasSeenTarget)
-            {
-                SetTargetDestination(senseCollider.lastSeenTargetPos);
-            }
-            else
-            {
-                SetRandomDestination();
-            }
-        }
-        else if (hasToStop && Vector3.Distance(transform.position, agent.destination) <= senseCollider.transform.localScale.x / 2)
-        {
-            Debug.Log(name + " : I have to stop.");
-            agent.SetDestination(transform.position);
-        }
-    }
-    private void Update()
-    {
-        UpdateDestination();
-    }
-    public void SetRandomDestination()
-    {
-        Debug.Log("Set random dest");
-        float randomX = UnityEngine.Random.Range(-worldTransform.localScale.x / 2, worldTransform.localScale.x / 2);
-        float randomZ = UnityEngine.Random.Range(-worldTransform.localScale.z / 2, worldTransform.localScale.z / 2);
-        agent.SetDestination(new Vector3(randomX, transform.position.y, randomZ));
-        hasRandomPath = true;
-
-        //Debug.Log(name + ": Random path.");
-    }
-    public void SetTargetDestination(Vector3 dest)
-    {
-        Debug.Log("Set target dest");
-        //Debug.DrawLine(new Vector3(transform.position.x, 1f, transform.position.z), senseCollider.lastSeenTargetPos, Color.red, 20.0f);
-        float maxRange = 5;
-        RaycastHit hit;
-        if (Physics.Raycast(agent.transform.position, (senseCollider.lastSeenTargetPos - transform.position), out hit, maxRange))
-        {
-            if (hit.transform.position == senseCollider.lastSeenTargetPos)
-            {
-                //Debug.Log(name + ": Fruit reachable.");
-                hasRandomPath = false;
-                //agent.SetDestination(new Vector3(dest.x, 0, dest.z));
-                agent.SetDestination(dest);
-                Debug.DrawLine(agent.transform.position, dest, Color.red, 1.0f);
-                //Debug.Log(name + ": Target path.");
-            }
-            else
-            {
-                Debug.Log(name + ": There is an obstacle...");
-            }
-        }
-    }
-
-    void Die()
-    {
-        Debug.Log("Die");
-        Destroy(gameObject);
-    }
-
-    public void ChangeAppearance()
-    {
-        Debug.Log("Change appearance");
-        // change material
-        float red = Convert.ToInt32(string.Join("", genes.Take(8)), 2)/255f;
-        float green = Convert.ToInt32(string.Join("", genes.Skip(8).Take(8)), 2) / 255f;
-        float blue = Convert.ToInt32(string.Join("", genes.Skip(16).Take(8)), 2) / 255f;
-
-        GetComponent<Renderer>().material.color = new Color(red, green, blue);
-
-        // change speed
-        gene_speed = red * 10f;
-        agent.speed = gene_speed;
-
-        // change size
-        gene_size = green * 10f;
-        senseCollider.GetComponent<SphereCollider>().radius = gene_size;
-
-        // change energy needs
-        gene_energyNeeds = blue * 100f;
-    }
-
-    #endregion
-}
-*/

@@ -9,6 +9,9 @@ TagManager:
   - Fertile
   - Blob
   - None
+  - BlobRoot
+  - BlobPanel
+  - GameManager
   layers:
   - Default
   - TransparentFX

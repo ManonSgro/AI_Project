@@ -55,6 +55,7 @@ public class Chart : MonoBehaviour
                 var posY = points[i] * gradientY;
                 var posX = (i - start + 1) * gradientX;
                 var tmpBar = Instantiate(point, transform.position, Quaternion.identity, transform);
+                tmpBar.GetComponent<Point>().value = points[i];
                 var posYfinal = posY - GetComponent<RectTransform>().rect.height / 2 - tmpBar.GetComponent<RectTransform>().rect.height;
                 //Debug.Log(gradientY);
                 tmpBar.transform.localPosition = new Vector3(posX - GetComponent<RectTransform>().rect.width / 2 - tmpBar.GetComponent<RectTransform>().rect.width / 2, posYfinal, 0f);

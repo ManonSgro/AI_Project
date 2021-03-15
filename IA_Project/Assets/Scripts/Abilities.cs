@@ -14,12 +14,10 @@ public class Abilities : MonoBehaviour
     public int populationSize = 0;
     public List<Blob> population = new List<Blob>();
 
-    private string targetDNA = "111111111111111111111111";
+    private string targetDNA = "1111111111111111111111111111111111111111";
     private string validCharacters = "01";
 
-    private int numGeneration = 0;
     private float bestFitness = 0;
-    private char[] bestGenes = new char[24];
 
     public List<Blob> parents = new List<Blob>();
 
@@ -50,11 +48,35 @@ public class Abilities : MonoBehaviour
     TextMeshProUGUI textSliderPopulation;
 
     [SerializeField]
-    CinemachineVirtualCamera vCam;
+    public CinemachineVirtualCamera vCam;
+
     [SerializeField]
-    GameObject smoke;
+    Transform safePos;
 
     bool gameInactive = true;
+
+    [SerializeField]
+    public BlobPanel blobPanel;
+
+    // Options before game
+    public bool sensorsError = false;
+    public bool speedAffectsEnergy = true;
+    public bool sensorsAffectsEnergy = true;
+    public bool energyAffectsBabies = true;
+    public bool canFormGroups = true;
+    public bool canShareEnergy = true;
+    [SerializeField]
+    SwitchButton sensorsErrorInput;
+    [SerializeField]
+    SwitchButton speedAffectEngergyInput;
+    [SerializeField]
+    SwitchButton sensorsAffectsEnergyInput;
+    [SerializeField]
+    SwitchButton energyAffectsBabiesInput;
+    [SerializeField]
+    SwitchButton canFormGroupsInput;
+    [SerializeField]
+    SwitchButton canShareEnergyInput;
 
     public void ChangeNbOfFruitsToSpawn()
     {
@@ -69,7 +91,7 @@ public class Abilities : MonoBehaviour
 
     bool RandomPoint(Vector3 center, float range, out Vector3 result)
     {
-        for (int i = 0; i < 30; i++)
+        for (int i = 0; i < 10; i++)
         {
             Vector3 randomPoint = center + Random.insideUnitSphere * range;
             NavMeshHit hit;
@@ -96,17 +118,24 @@ public class Abilities : MonoBehaviour
 
     IEnumerator MakingBabies(Blob blob1, Blob blob2)
     {
-        Vector3 point;
-        if (!RandomPoint(blob1.transform.position, 10f, out point))
+        yield return new WaitForSeconds(2f);
+        Vector3 pos = safePos.position;
+        if (blob1 != null)
         {
-            point = blob1.transform.position;
+            pos = blob1.transform.position;
+        }
+        if (blob2 != null)
+        {
+            pos = blob2.transform.position;
+        }
+        Vector3 point;
+        if (!RandomPoint(pos, 100f, out point))
+        {
+            point = pos;
         }
         GameObject tmpBlob = Instantiate(newBlob, point, Quaternion.identity);
 
-        GameObject smokePuff = Instantiate(smoke, point, transform.rotation) as GameObject;
-        ParticleSystem parts = smokePuff.GetComponent<ParticleSystem>();
-        float totalDuration = parts.duration;
-        Destroy(smokePuff, totalDuration);
+        //PlayParticles(point);
 
         tmpBlob.GetComponent<Blob>().Crossover(blob1,blob2);
         tmpBlob.GetComponent<Blob>().Mutate(mutationRate);
@@ -140,9 +169,17 @@ public class Abilities : MonoBehaviour
 
     public void StartGame()
     {
-        population = new List<Blob>();
+        population.Clear();
+        ClearCharts();
 
         gameInactive = false;
+
+        sensorsAffectsEnergy = sensorsErrorInput.isSelected;
+        speedAffectsEnergy = speedAffectEngergyInput.isSelected;
+        sensorsAffectsEnergy = sensorsAffectsEnergyInput.isSelected;
+        energyAffectsBabies = energyAffectsBabiesInput.isSelected;
+        canFormGroups = canFormGroupsInput.isSelected;
+        canShareEnergy = canShareEnergyInput.isSelected;
 
         newBlob.GetComponent<Blob>().firstGen = true;
         for (int i = 0; i < initialPopulation; ++i)
@@ -153,11 +190,8 @@ public class Abilities : MonoBehaviour
             Vector3 point;
             if (RandomPoint(new Vector3(randomX, 0, randomZ), 30f, out point))
             {
-                Instantiate(newBlob, point, Quaternion.identity, blobRoot.transform);
-                GameObject smokePuff = Instantiate(smoke, point, transform.rotation) as GameObject;
-                ParticleSystem parts = smokePuff.GetComponent<ParticleSystem>();
-                float totalDuration = parts.duration;
-                Destroy(smokePuff, totalDuration);
+                var tmpBlob = Instantiate(newBlob, point, Quaternion.identity, blobRoot.transform);
+                //tmpBlob.transform.position = point;
             }
         }
         newBlob.GetComponent<Blob>().firstGen = false;
@@ -173,9 +207,13 @@ public class Abilities : MonoBehaviour
 
         CancelInvoke("SpawnFruit");
         CancelInvoke("UpdateCharts");
+
+        gameInactive = true;
+        UpdateCharts();
     }
     public void RestartGame()
     {
+        gameInactive = false;
         Time.timeScale = 1f;
 
         InvokeRepeating("SpawnFruit", 0f, 1f);
@@ -208,6 +246,8 @@ public class Abilities : MonoBehaviour
         charts[2].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_speed) / population.Count : 0.5f);
         charts[3].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_size) / population.Count : 0.5f);
         charts[4].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_energyNeeds) / population.Count : 0.5f);
+        charts[5].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_groupSize) / population.Count : 0.5f);
+        charts[6].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_share) / population.Count : 0.5f);
 
         foreach (Chart chart in charts)
         {
@@ -215,6 +255,17 @@ public class Abilities : MonoBehaviour
 
         }
         
+
+    }
+
+    public void ClearCharts()
+    {
+        foreach (Chart chart in charts)
+        {
+            chart.points.Clear();
+
+        }
+
 
     }
 
@@ -259,7 +310,7 @@ public class Abilities : MonoBehaviour
         if (fitness > bestFitness)
         {
             bestFitness = fitness;
-            bestGenes = genes;
+            //bestGenes = genes;
         }
 
         return fitness;

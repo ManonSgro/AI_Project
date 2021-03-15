@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.AI;
+using System.Collections;
 
 public class ContactZone : MonoBehaviour
 {
@@ -21,7 +22,8 @@ public class ContactZone : MonoBehaviour
         {
             if (blob.child)
             {
-                blob.transform.localScale = blob.transform.localScale + new Vector3(0.1f, 0.1f, 0.1f);
+                float scale = 0.1f / 20 * other.GetComponent<Fruit>().calories;
+                blob.transform.localScale = blob.transform.localScale + new Vector3(scale, scale, scale);
                 if (blob.transform.localScale.x >= 1)
                 {
                     blob.child = false;
@@ -33,7 +35,35 @@ public class ContactZone : MonoBehaviour
         if (blob.state == BlobState.Fertile && other.CompareTag("Blob") && other.GetComponent<Blob>().state == BlobState.Fertile)
         {
             gameManager.GetComponent<Abilities>().AddParents(blob, other.GetComponent<Blob>());
+            blob.StartCoroutine("MakingBaby");
         }
+        if (blob.state == BlobState.Fertile && other.CompareTag("Blob") && other.GetComponent<Blob>().state == BlobState.Hungry)
+        {
+            float random = Random.Range(0f, 1f);
+            if (random <= blob.gene_share)
+            {
+                float energyToShare = (blob.energy - 50) / 2;
+                if(energyToShare >= 1)
+                {
+                    other.GetComponent<Blob>().energy += energyToShare;
+                    blob.energy -= energyToShare;
+                    if (other.GetComponent<Blob>().child)
+                    {
+                        float scale = 0.1f / 20 * energyToShare;
+                        other.transform.localScale += new Vector3(scale, scale, scale);
+                        if (other.transform.localScale.x >= 1)
+                        {
+                            other.GetComponent<Blob>().child = false;
+                        }
+                    }
+                }
+            }
+        }
+        if (other.CompareTag("Blob") && blob.group.Count < blob.group.Capacity && !blob.group.Contains(other.GetComponent<Blob>()) && other.GetComponent<Blob>().group.Count < other.GetComponent<Blob>().group.Capacity)
+        {
+            blob.group.Add(other.GetComponent<Blob>());
+            //other.GetComponent<Blob>().group.Add(blob);
+        }       
     }
     /*
     [SerializeField]
