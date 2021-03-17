@@ -51,7 +51,7 @@ public class Abilities : MonoBehaviour
     public CinemachineVirtualCamera vCam;
 
     [SerializeField]
-    Transform safePos;
+    public Transform safePos;
 
     bool gameInactive = true;
 
@@ -246,7 +246,7 @@ public class Abilities : MonoBehaviour
         charts[2].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_speed) / population.Count : 0.5f);
         charts[3].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_size) / population.Count : 0.5f);
         charts[4].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_energyNeeds) / population.Count : 0.5f);
-        charts[5].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_groupSize) / population.Count : 0.5f);
+        charts[5].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().group.members.Count) / population.Count : 0.5f);
         charts[6].points.Add(population.Count > 0 ? population.Sum(e => e.GetComponent<Blob>().gene_share) / population.Count : 0.5f);
 
         foreach (Chart chart in charts)

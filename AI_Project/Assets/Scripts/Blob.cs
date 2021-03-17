@@ -8,6 +8,24 @@ using Cinemachine;
 
 public enum BlobState { None, Hungry, Fertile, Dead }
 
+public class BlobGroup
+{
+    public List<Blob> members;
+
+    public BlobGroup(int size, Blob itself)
+    {
+        members = new List<Blob>(size+1);
+        members.Add(itself);
+    }
+
+    public BlobGroup MergeGroups(BlobGroup otherGroup)
+    {
+        members.AddRange(otherGroup.members);
+        members = members.Distinct().ToList();
+        return this;
+    }
+}
+
 public class Blob : MonoBehaviour
 {
     public string firstname = "Etienne";
@@ -40,7 +58,8 @@ public class Blob : MonoBehaviour
     [SerializeField]
     public float gene_energyNeeds = 70f;
     public float gene_groupSize = 0f;
-    public List<Blob> group;
+    //public List<Blob> group;
+    public BlobGroup group;
     public float gene_share = 0f;
     float energyLoss = 0f;
 
@@ -95,14 +114,22 @@ public class Blob : MonoBehaviour
         {
             Vector3 randomPoint = center + UnityEngine.Random.insideUnitSphere * range;
             NavMeshHit hit;
-            var areaMaskFromName = 1 << NavMesh.GetAreaFromName("Walkable");
+            //var areaMaskFromName = 1 << NavMesh.GetAreaFromName("Walkable");
+            var areaMaskFromName = NavMesh.AllAreas;
             if (NavMesh.SamplePosition(randomPoint, out hit, 1.0f, areaMaskFromName))
             {
                 result = hit.position;
                 return true;
             }
+            else
+            {
+                result = Vector3.MoveTowards(transform.position, gameManager.GetComponent<Abilities>().safePos.position, agent.speed*0.1f);
+                return true;
+            }
         }
-        result = Vector3.zero;
+        //result = Vector3.zero;
+        //return false;
+        result = gameManager.GetComponent<Abilities>().safePos.position;
         return false;
     }
 
@@ -157,12 +184,14 @@ public class Blob : MonoBehaviour
         {
             SetRandomDestination();
         }
+        /*
         if (hasRandomPath && group.Count > 0)
         {
-            Vector3 newPoint = SetGroupDestination();
-            if(Vector3.Distance(newPoint, oldPoint) > 5f)
+            if(Vector3.Distance(group[0].transform.position, oldPoint) > 5f)
             {
-                oldPoint = newPoint;
+                oldPoint = group[0].transform.position;
+
+                Vector3 newPoint = SetGroupDestination();
                 Vector3 point;
                 if (RandomPoint(newPoint, 30f, out point))
                 {
@@ -176,7 +205,7 @@ public class Blob : MonoBehaviour
                     }
                 }
             }
-        }
+        }*/
     }
 
     void LoseEnergy()
@@ -231,26 +260,27 @@ public class Blob : MonoBehaviour
 
     Vector3 SetGroupDestination()
     {
-        Vector3 randomPoint = Vector3.zero;
+        Vector3 randomPoint = transform.position;
 
         // check for null
-        group.RemoveAll(item => item == null);
+        group.members.RemoveAll(item => item == null);
 
-        if (group.Count > 0)
+        if (group.members.Count > 0)
         {
             Vector3 average = Vector3.zero;
             int n = 0;
-            for(int i=0; i<group.Count; ++i)
+            for(int i=0; i<group.members.Count; ++i)
             {
-                if (group[i] != null && Vector3.Distance(group[i].transform.position, transform.position) < 10f)
+                if (group.members[i] != null && group.members[i].hasRandomPath)// && Vector3.Distance(group[i].transform.position, transform.position) < 10f)
                 {
-                    average += group[i].transform.position;
+                    average += group.members[i].transform.position;
                     ++n;
                 }
             }
             randomPoint = average/n;
         }
-        return randomPoint;
+        //return randomPoint;
+        return Vector3.MoveTowards(transform.position, randomPoint, agent.speed);
     }
 
     public void SetRandomDestination()
@@ -296,10 +326,10 @@ public class Blob : MonoBehaviour
         }
         */
         Vector3 randomPoint;
-        if (group.Count > 0)
+        if (group.members.Count > 0)
         {
             randomPoint = SetGroupDestination();
-            oldPoint = randomPoint;
+            //oldPoint = group[0].transform.position;
         }
         else
         {
@@ -308,6 +338,7 @@ public class Blob : MonoBehaviour
             randomPoint = new Vector3(randomX, transform.position.y, randomZ);
         }
 
+        // find closest point on map
         Vector3 point;
         if (RandomPoint(randomPoint, 30f, out point))
         {
@@ -424,7 +455,8 @@ public class Blob : MonoBehaviour
         // change groupSize
         int maxGroupSize = 10;
         gene_groupSize = Mathf.Round(groupSize * maxGroupSize);
-        group = new List<Blob>(Mathf.RoundToInt(gene_groupSize));
+        //group = new List<Blob>(Mathf.RoundToInt(gene_groupSize));
+        group = new BlobGroup(Mathf.RoundToInt(gene_groupSize), this);
 
         // change sharing
         gene_share = share;

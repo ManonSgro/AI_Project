@@ -21,10 +21,10 @@ public class BlobPanel : MonoBehaviour
     public void UpdateInfos(Blob blob)
     {
         nameField.text = blob.firstname;
-        speedField.text = "Speed : "+(blob.gene_speed * 10f).ToString();
-        sensorsSizeField.text = "Sensors size : " + (blob.gene_size * 50f).ToString();
+        speedField.text = "Speed : "+(blob.gene_speed).ToString();
+        sensorsSizeField.text = "Sensors size : " + (blob.gene_size).ToString();
         energyNeedField.text = "Energy needs : " + (blob.gene_energyNeeds).ToString();
-        UpdateGroupField(blob.group);
+        UpdateGroupField(blob.group.members);
         generosityField.text = "Generosity : " + (blob.gene_share).ToString();
 
     }

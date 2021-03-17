@@ -59,9 +59,11 @@ public class ContactZone : MonoBehaviour
                 }
             }
         }
-        if (other.CompareTag("Blob") && blob.group.Count < blob.group.Capacity && !blob.group.Contains(other.GetComponent<Blob>()) && other.GetComponent<Blob>().group.Count < other.GetComponent<Blob>().group.Capacity)
+        if (other.CompareTag("Blob") && !blob.group.members.Contains(other.GetComponent<Blob>()) && blob.group.members.Capacity - blob.group.members.Count >= other.GetComponent<Blob>().group.members.Count && other.GetComponent<Blob>().group.members.Capacity - other.GetComponent<Blob>().group.members.Count >= blob.group.members.Count)
         {
-            blob.group.Add(other.GetComponent<Blob>());
+            var newGroup = blob.group.MergeGroups(other.GetComponent<Blob>().group);
+            blob.group = newGroup;
+            other.GetComponent<Blob>().group = newGroup;
             //other.GetComponent<Blob>().group.Add(blob);
         }       
     }
