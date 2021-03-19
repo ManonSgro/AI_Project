@@ -36,6 +36,6 @@ public class BlobPanel : MonoBehaviour
         {
             groupField.text += (b.firstname + "-");
         }
-        groupField.text = groupField.text.Substring(0, groupField.text.Length-2);
+        groupField.text = groupField.text.Substring(0, groupField.text.Length-1);
     }
 }

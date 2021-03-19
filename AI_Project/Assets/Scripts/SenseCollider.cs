@@ -15,7 +15,7 @@ public class SenseCollider : MonoBehaviour
     private void Start()
     {
         //InvokeRepeating("Anim", 0f, 2f);
-        canAnim = GameObject.FindGameObjectWithTag("GameManager").GetComponent<Abilities>().sensorsError;
+        canAnim = !GameObject.FindGameObjectWithTag("GameManager").GetComponent<Abilities>().sensorsError;
     }
     private void Anim()
     {
