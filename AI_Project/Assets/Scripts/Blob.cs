@@ -271,7 +271,7 @@ public class Blob : MonoBehaviour
             int n = 0;
             for(int i=0; i<group.members.Count; ++i)
             {
-                if (group.members[i] != null && group.members[i].hasRandomPath)// && Vector3.Distance(group[i].transform.position, transform.position) < 10f)
+                if (group.members[i] != null)// && group.members[i].hasRandomPath)// && Vector3.Distance(group[i].transform.position, transform.position) < 10f)
                 {
                     average += group.members[i].transform.position;
                     ++n;
