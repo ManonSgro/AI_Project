@@ -1,4 +1,4 @@
-# IA_Project
-IA project with Unity
+# AI_Project
+AI project with Unity
 # Goals
-Blob perception system
+Simulate the evolution of a population through generations.
